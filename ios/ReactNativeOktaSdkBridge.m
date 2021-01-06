@@ -16,7 +16,9 @@
 
 RCT_EXTERN_METHOD(
   createConfig:
-  (NSString *)clientId 
+  (NSString *)clientId
+  noSSO:(BOOL)noSSO
+  idp:(NSString *)idp 
   redirectUrl:(NSString *)redirectUrl 
   endSessionRedirectUri:(NSString *)endSessionRedirectUri 
   discoveryUri:(NSString *)discoveryUri 
