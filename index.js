@@ -10,7 +10,7 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-import { NativeModules, Platform, NativeEventEmitter } from 'react-native';
+import { NativeModules, Platform, DeviceEventEmitter, NativeEventEmitter } from 'react-native';
 import { assertIssuer, assertClientId, assertRedirectUri } from '@okta/configuration-validation';
 import jwt from 'jwt-lite';
 import OktaAuth from '@okta/okta-auth-js';
@@ -28,17 +28,16 @@ class OktaAuthError extends Error {
   }
 }
 
-export const createConfig = async({
+export const createConfig = async ({
+  idp,
+  noSSO,
   issuer,
   clientId,
-  redirectUri, 
-  endSessionRedirectUri, 
+  redirectUri,
+  endSessionRedirectUri,
   discoveryUri,
   scopes,
-  requireHardwareBackedKeyStore,
-  androidChromeTabColor,
-  httpConnectionTimeout,
-  httpReadTimeout,
+  requireHardwareBackedKeyStore
 }) => {
 
   assertIssuer(discoveryUri);
@@ -48,17 +47,19 @@ export const createConfig = async({
 
   const userAgentTemplate = `@okta/okta-react-native/${version} $UPSTREAM_SDK react-native/${version} ${Platform.OS}/${Platform.Version}`;
   const { origin } = Url(discoveryUri);
-  authClient = new OktaAuth({ 
+  authClient = new OktaAuth({
     issuer: issuer || origin,
     userAgent: {
       template: userAgentTemplate.replace('$UPSTREAM_SDK', '$OKTA_AUTH_JS')
-    } 
+    }
   });
 
   if (Platform.OS === 'ios') {
     scopes = scopes.join(' ');
     return NativeModules.OktaSdkBridge.createConfig(
       clientId,
+      noSSO,
+      idp,
       redirectUri,
       endSessionRedirectUri,
       discoveryUri,
@@ -67,11 +68,6 @@ export const createConfig = async({
     );
   }
 
-  const timeouts = {
-    httpConnectionTimeout,
-    httpReadTimeout,
-  };
-    
   return NativeModules.OktaSdkBridge.createConfig(
     clientId,
     redirectUri,
@@ -79,23 +75,21 @@ export const createConfig = async({
     discoveryUri,
     scopes,
     userAgentTemplate,
-    requireHardwareBackedKeyStore,
-    androidChromeTabColor,
-    timeouts,
+    requireHardwareBackedKeyStore
   );
-}; 
+}
 
 export const getAuthClient = () => {
   if (!authClient) {
     throw new OktaAuthError(
-      '-100', 
+      '-100',
       'OktaOidc client isn\'t configured, check if you have created a configuration with createConfig'
     );
   }
   return authClient;
-};
+}
 
-export const signIn = async(options) => {
+export const signIn = async (options) => {
   // Custom sign in
   if (options && typeof options === 'object') {
     return authClient.signIn(options)
@@ -103,7 +97,7 @@ export const signIn = async(options) => {
         const { status, sessionToken } = transaction;
         if (status !== 'SUCCESS') {
           throw new Error('Transaction status other than "SUCCESS" has been return, please handle it properly by calling "authClient.tx.resume()"');
-        } 
+        }
         return authenticate({ sessionToken });
       })
       .then(token => {
@@ -120,32 +114,32 @@ export const signIn = async(options) => {
 
   // Browser sign in - Legacy support for non breaking.
   return signInWithBrowser();
-};
+}
 
-export const signInWithBrowser = async(options = {}) => {
+export const signInWithBrowser = async (options = {}) => {
   if (Platform.OS === 'ios') {
     return NativeModules.OktaSdkBridge.signIn();
   }
   return NativeModules.OktaSdkBridge.signIn(options);
 };
 
-export const signOut = async() => {
+export const signOut = async () => {
   return NativeModules.OktaSdkBridge.signOut();
-};
+}
 
-export const authenticate = async({sessionToken}) => {
+export const authenticate = async ({ sessionToken }) => {
   return NativeModules.OktaSdkBridge.authenticate(sessionToken);
-};
+}
 
-export const getAccessToken = async() => {
+export const getAccessToken = async () => {
   return NativeModules.OktaSdkBridge.getAccessToken();
-};
+}
 
-export const getIdToken = async() => {
+export const getIdToken = async () => {
   return NativeModules.OktaSdkBridge.getIdToken();
-};
+}
 
-export const getUser = async() => {
+export const getUser = async () => {
   return NativeModules.OktaSdkBridge.getUser()
     .then(data => {
       if (typeof data === 'string') {
@@ -158,47 +152,47 @@ export const getUser = async() => {
 
       return data;
     });
-};
+}
 
-export const getUserFromIdToken = async() => {
+export const getUserFromIdToken = async () => {
   let idTokenResponse = await getIdToken();
   return jwt.decode(idTokenResponse.id_token).claimsSet;
-};
+}
 
-export const isAuthenticated = async() => {
+export const isAuthenticated = async () => {
   return NativeModules.OktaSdkBridge.isAuthenticated();
-};
+}
 
-export const revokeAccessToken = async() => {
+export const revokeAccessToken = async () => {
   return NativeModules.OktaSdkBridge.revokeAccessToken();
-};
+}
 
-export const revokeIdToken = async() => {
+export const revokeIdToken = async () => {
   return NativeModules.OktaSdkBridge.revokeIdToken();
-};
+}
 
-export const revokeRefreshToken = async() => {
+export const revokeRefreshToken = async () => {
   return NativeModules.OktaSdkBridge.revokeRefreshToken();
-};
+}
 
-export const introspectAccessToken = async() => {
-  return NativeModules.OktaSdkBridge.introspectAccessToken(); 
-};
+export const introspectAccessToken = async () => {
+  return NativeModules.OktaSdkBridge.introspectAccessToken();
+}
 
-export const introspectIdToken = async() => {
-  return NativeModules.OktaSdkBridge.introspectIdToken(); 
-};
+export const introspectIdToken = async () => {
+  return NativeModules.OktaSdkBridge.introspectIdToken();
+}
 
-export const introspectRefreshToken = async() => {
-  return NativeModules.OktaSdkBridge.introspectRefreshToken(); 
-};
+export const introspectRefreshToken = async () => {
+  return NativeModules.OktaSdkBridge.introspectRefreshToken();
+}
 
-export const refreshTokens = async() => {
-  return NativeModules.OktaSdkBridge.refreshTokens(); 
-};
+export const refreshTokens = async () => {
+  return NativeModules.OktaSdkBridge.refreshTokens();
+}
 
-export const clearTokens = async() => {
-  return NativeModules.OktaSdkBridge.clearTokens(); 
-};
+export const clearTokens = async () => {
+  return NativeModules.OktaSdkBridge.clearTokens();
+}
 
 export const EventEmitter = new NativeEventEmitter(NativeModules.OktaSdkBridge);
