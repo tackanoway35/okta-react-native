@@ -21,6 +21,8 @@ class OktaSdkBridge: RCTEventEmitter {
     
     @objc
     func createConfig(_ clientId: String,
+                      noSSO: Bool,
+                      idp: String,
                       redirectUrl: String,
                       endSessionRedirectUri: String,
                       discoveryUri: String,
@@ -37,8 +39,13 @@ class OktaSdkBridge: RCTEventEmitter {
                 "clientId": clientId,
                 "redirectUri": redirectUrl,
                 "logoutRedirectUri": endSessionRedirectUri,
-                "scopes": scopes
+                "scopes": scopes,
+                "idp": idp
                 ])
+            // Change noSSO = true for IOS >= 13
+            if #available(iOS 13.0, *) {
+                config?.noSSO = noSSO
+            }
             oktaOidc = try OktaOidc(configuration: config)
             promiseResolver(true)
         } catch let error {
